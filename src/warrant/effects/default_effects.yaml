@@ -1,0 +1,84 @@
+# Default effect patterns for warrant.
+#
+# Each entry maps a call pattern to an abstract effect. The pattern is
+# matched against the *resolved* call target: bare names (like `open`)
+# match builtins; dotted names match imported module attributes.
+#
+# Users can override this file via --effects-config, or extend it by
+# placing a warrant.effects.yaml next to their spec.
+
+effects:
+  # --- Filesystem reads ---
+  - pattern: open
+    effect: read_fs
+    note: builtin open() with default mode reads
+  - pattern: pathlib.Path.read_text
+    effect: read_fs
+  - pattern: pathlib.Path.read_bytes
+    effect: read_fs
+  - pattern: os.listdir
+    effect: read_fs
+  - pattern: os.stat
+    effect: read_fs
+  - pattern: glob.glob
+    effect: read_fs
+
+  # --- Filesystem writes ---
+  - pattern: os.remove
+    effect: write_fs
+  - pattern: os.unlink
+    effect: write_fs
+  - pattern: os.mkdir
+    effect: write_fs
+  - pattern: os.makedirs
+    effect: write_fs
+  - pattern: os.rename
+    effect: write_fs
+  - pattern: shutil.rmtree
+    effect: write_fs
+  - pattern: shutil.copy
+    effect: write_fs
+  - pattern: shutil.move
+    effect: write_fs
+
+  # --- Network ---
+  - pattern: socket.*
+    effect: network
+  - pattern: requests.*
+    effect: network
+  - pattern: httpx.*
+    effect: network
+  - pattern: urllib.request.*
+    effect: network
+
+  # --- Time ---
+  - pattern: time.time
+    effect: clock
+  - pattern: time.monotonic
+    effect: clock
+  - pattern: time.perf_counter
+    effect: clock
+  - pattern: datetime.datetime.now
+    effect: clock
+  - pattern: datetime.datetime.utcnow
+    effect: clock
+
+  # --- Randomness ---
+  - pattern: random.random
+    effect: random
+  - pattern: random.randint
+    effect: random
+  - pattern: random.choice
+    effect: random
+  - pattern: secrets.token_bytes
+    effect: random
+
+  # --- Process ---
+  - pattern: os.system
+    effect: spawn
+  - pattern: subprocess.run
+    effect: spawn
+  - pattern: subprocess.Popen
+    effect: spawn
+  - pattern: subprocess.call
+    effect: spawn
