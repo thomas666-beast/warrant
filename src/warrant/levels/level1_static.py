@@ -17,6 +17,7 @@ import ast
 
 from warrant.effects import detect_calls, load_default_config
 from warrant.effects.config import EffectsConfig
+from warrant.effects.detector import ResolvedCall
 from warrant.ir.module import FunctionIR, ModuleIR
 from warrant.schema.spec import Effect, FunctionSpec, Spec
 from warrant.verify.result import Finding, Severity
@@ -63,20 +64,17 @@ def _check_effects(
     config: EffectsConfig,
 ) -> list[Finding]:
     """Compare declared vs. detected effects for one function."""
-    # Parse the function's source in isolation so we can walk just this body.
-    # We reuse the module's AST for the whole file? No — the IR carries the
-    # source slice. Reparse it to get a function-local AST.
     try:
         func_tree = ast.parse(ir.source)
     except SyntaxError:
-        # Source slice is not reparseable (e.g. decorators with weird
-        # indentation). Fall back to no effects rather than crash.
+        # Source slice is not reparseable. Fall back to no effects rather
+        # than crash; a later task will carry the AST node directly.
         return []
 
     detected = detect_calls(ir, func_tree, config)
 
     # Deduplicate by effect, keeping the first call site for reporting.
-    by_effect: dict[Effect, object] = {}
+    by_effect: dict[Effect, ResolvedCall] = {}
     for effect, call in detected:
         if effect not in by_effect:
             by_effect[effect] = call
@@ -89,10 +87,6 @@ def _check_effects(
     # Missing declaration → ERROR
     for effect in sorted(detected_set - declared):
         call = by_effect[effect]
-        # call is a ResolvedCall
-        from warrant.effects.detector import ResolvedCall
-
-        assert isinstance(call, ResolvedCall)
         findings.append(
             Finding(
                 severity=Severity.ERROR,
@@ -123,3 +117,4 @@ def _check_effects(
         )
 
     return findings
+
