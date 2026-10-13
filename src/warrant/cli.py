@@ -41,7 +41,9 @@ def main(
 def verify(
     spec: str = typer.Argument(..., help="Path to the .warrant.yaml spec file."),
     impl: str = typer.Option(..., "--impl", "-i", help="Path to the implementation file."),
-    level: int = typer.Option(1, "--level", "-l", min=1, max=3, help="Verification rigor level (1-3)."),
+    level: int = typer.Option(
+        1, "--level", "-l", min=1, max=3, help="Verification rigor level (1-3)."
+    ),
 ) -> None:
     """Verify an implementation against a spec."""
     # Task 4 will wire this to the loader + levels.
