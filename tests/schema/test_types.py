@@ -34,7 +34,9 @@ def test_optional() -> None:
 
 
 def test_dict() -> None:
-    assert parse_type("Optional[str]") == OptionalType(inner=PrimitiveType(name="str"))
+    assert parse_type("Dict[str, int]") == DictType(
+        key=PrimitiveType(name="str"), value=PrimitiveType(name="int")
+    )
 
 
 def test_dict_with_nested() -> None:

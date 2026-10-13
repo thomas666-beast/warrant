@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from warrant.schema.spec import Parameter, Signature
-from warrant.schema.types import ListType, PrimitiveType
+from warrant.schema.types import ListType, OpaqueType, PrimitiveType
 
 
 def test_simple_signature() -> None:
@@ -44,7 +44,7 @@ def test_nested_generics_in_params() -> None:
 
 def test_unknown_return_type_becomes_opaque() -> None:
     sig = Signature.parse("f(x: int) -> Widget")
-    assert sig.returns == PrimitiveType(name="int") or True  # sanity: no crash
+    assert sig.returns == OpaqueType(text="Widget")
     assert sig.name == "f"
 
 
