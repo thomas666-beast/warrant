@@ -15,11 +15,11 @@ AI can now produce code faster than humans can meaningfully review. Existing qua
 **Pre-alpha.** Nothing works yet. Follow along as we build it in public.
 
 - ✅ Task 1 — Repo scaffolding & CI
-- ⬜ Task 2 — Spec schema (pydantic models)
-- ⬜ Task 3 — YAML spec loader
-- ⬜ Task 4 — CLI skeleton
-- ⬜ Task 5 — Python adapter
-- ⬜ Task 6 — L1: static effect analysis
+- ✅ Task 2 — Spec schema (pydantic models)
+- ✅ Task 3 — YAML spec loader
+- ✅ Task 4 — CLI skeleton
+- ✅ Task 5 — Python adapter
+- ✅ Task 6 — L1: static effect analysis
 - ⬜ Task 7 — L1: example test generation
 - ⬜ Task 8 — Rich counterexample reporter
 - ⬜ Task 9 — L2: property-based testing
