@@ -149,8 +149,10 @@ def lookup_path(root: Any, path: tuple[str, ...]) -> tuple[Any, int, int]:
 def _node_line(node: Any, default: int = 1) -> int:
     if isinstance(node, (CommentedMap, CommentedSeq)):
         try:
-            return node.lc.line + 1  # ruamel is 0-based
-        except Exception:
+            lc: Any = node.lc
+            line: int = int(lc.line) + 1  # ruamel is 0-based
+            return line
+        except (AttributeError, TypeError, ValueError):
             return default
     return default
 
@@ -158,8 +160,10 @@ def _node_line(node: Any, default: int = 1) -> int:
 def _node_col(node: Any, default: int = 1) -> int:
     if isinstance(node, (CommentedMap, CommentedSeq)):
         try:
-            return node.lc.col + 1  # ruamel is 0-based
-        except Exception:
+            lc: Any = node.lc
+            col: int = int(lc.col) + 1  # ruamel is 0-based
+            return col
+        except (AttributeError, TypeError, ValueError):
             return default
     return default
 
@@ -167,13 +171,16 @@ def _node_col(node: Any, default: int = 1) -> int:
 def _make_yaml() -> YAML:
     """A YAML parser configured for spec files.
 
-    - `typ='safe'` disables arbitrary Python object construction
-    - `preserve_quotes=True` keeps author intent in error messages
-    - YAML 1.2 resolver avoids the Norway problem (`no` ≠ `False`)
+    - `typ="rt"` (round-trip) gives us CommentedMap/CommentedSeq with `.lc`
+      line/column info. This is the whole reason we chose ruamel over pyyaml.
+    - `pure=True` uses the Python implementation (predictable across versions).
+    - `version=(1, 2)` avoids the Norway problem (`no` stays a string).
+    - `allow_duplicate_keys=False` catches accidental dupes in specs.
     """
-    yaml = YAML(typ="safe", pure=True)
+    yaml = YAML(typ="rt", pure=True)
     yaml.preserve_quotes = True
     yaml.version = (1, 2)
+    yaml.allow_duplicate_keys = False
     return yaml
 
 

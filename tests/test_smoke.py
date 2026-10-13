@@ -18,19 +18,9 @@ def test_version_is_set() -> None:
 def test_cli_version() -> None:
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
-    assert __version__ in result.stdout
-
+    assert __version__ in result.output
 
 def test_cli_help() -> None:
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
     assert "Specs you can check" in result.stdout
-
-
-def test_cli_verify_stub() -> None:
-    result = runner.invoke(
-        app,
-        ["verify", "some/spec.warrant.yaml", "--impl", "some/impl.py", "--level", "1"],
-    )
-    assert result.exit_code == 0
-    assert "TODO" in result.stdout

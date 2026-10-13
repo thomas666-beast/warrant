@@ -1,0 +1,17 @@
+module: max
+functions:
+  max_of:
+    signature: "max_of(xs: List[int]) -> int"
+    requires:
+      - "len(xs) > 0"
+    ensures:
+      - "result in xs"
+      - "forall y in xs: result >= y"
+    complexity: "O(n)"
+    properties:
+      - name: idempotent
+        kind: example
+        text: "max_of([x]) == x"
+      - name: order_invariant
+        kind: invariant
+        text: "max_of(xs) == max_of(shuffled(xs))"

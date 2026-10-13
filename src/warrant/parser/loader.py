@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from pydantic import ValidationError
+from pydantic_core import ErrorDetails
 
 from warrant.parser.errors import SpecLoadError
 from warrant.parser.source import Source, lookup_path, node_col, node_line
@@ -163,30 +164,59 @@ def _extract_raw_dict(source: Source) -> dict[str, Any] | SpecLoadError:
                     hint=f"allowed keys: {sorted(_FUNCTION_KEYS)}",
                 )
 
-        functions[fname] = _normalize_function(fname, fraw, source)
+        normalized = _normalize_function(fname, fraw, source)
+        if isinstance(normalized, SpecLoadError):
+            return normalized
+        functions[fname] = normalized
 
     return {"module": root["module"], "functions": functions}
 
 
 def _normalize_function(
     fname: str, fraw: dict[str, Any], source: Source
-) -> dict[str, Any]:
+) -> dict[str, Any] | SpecLoadError:
     """Normalize one function's raw YAML into the shape pydantic expects."""
+    from warrant.schema.spec import Signature
+
     out: dict[str, Any] = {}
 
-    # signature: required
+    # signature: required, and must parse
     sig = fraw.get("signature")
     if sig is None:
         _, line, col = lookup_path(source.root, ("functions", fname))
-        # raise-like: we return a dict, but we need to signal error
-        # Trick: attach a sentinel that the caller will notice. Simpler:
-        # do the check in the caller. For now, insert a value pydantic will
-        # reject with a decent message.
-        out["signature"] = None
-        return out
-    out["signature"] = sig
+        return SpecLoadError(
+            message=f"function {fname!r} is missing required key 'signature'",
+            file=source.file,
+            line=line,
+            column=col,
+            path=("functions", fname, "signature"),
+            hint='e.g. signature: "f(x: int) -> int"',
+        )
+    if not isinstance(sig, str):
+        _, line, col = lookup_path(source.root, ("functions", fname, "signature"))
+        return SpecLoadError(
+            message=f"signature must be a string, got {type(sig).__name__}",
+            file=source.file,
+            line=line,
+            column=col,
+            path=("functions", fname, "signature"),
+        )
 
-    # requires / ensures / invariants: list of strings
+    try:
+        parsed_sig = Signature.parse(sig)
+    except ValueError as e:
+        _, line, col = lookup_path(source.root, ("functions", fname, "signature"))
+        return SpecLoadError(
+            message=f"invalid signature: {e}",
+            file=source.file,
+            line=line,
+            column=col,
+            path=("functions", fname, "signature"),
+        )
+
+    out["signature"] = parsed_sig
+
+    # requires / ensures / invariants: list of strings → list of dicts
     for key in ("requires", "ensures", "invariants"):
         if key in fraw:
             value = fraw[key]
@@ -198,21 +228,18 @@ def _normalize_function(
                     for i, v in enumerate(value)
                 ]
             else:
-                out[key] = value  # let pydantic complain
+                out[key] = value
         else:
             out[key] = []
 
-    # effects: list of strings → frozenset handled by pydantic
+    # effects
     if "effects" in fraw:
         value = fraw["effects"]
-        if value is None:
-            out["effects"] = []
-        else:
-            out["effects"] = value
+        out["effects"] = [] if value is None else value
     else:
         out["effects"] = []
 
-    # complexity: string → Complexity object
+    # complexity
     if "complexity" in fraw and fraw["complexity"] is not None:
         from warrant.schema.spec import Complexity
 
@@ -220,22 +247,13 @@ def _normalize_function(
     else:
         out["complexity"] = None
 
-    # properties: list of dicts
+    # properties
     if "properties" in fraw and fraw["properties"] is not None:
         props = fraw["properties"]
         if isinstance(props, list):
-            normalized: list[dict[str, Any]] = []
-            for i, prop in enumerate(props):
-                if not isinstance(prop, dict):
-                    normalized.append(prop)  # let pydantic complain
-                    continue
-                for key in prop:
-                    if key not in _PROPERTY_KEYS:
-                        # Let pydantic's extra="forbid" complain; but we want
-                        # the line. We'll attach it via __line__ hint below.
-                        pass
-                normalized.append(dict(prop))
-            out["properties"] = normalized
+            out["properties"] = [
+                dict(prop) if isinstance(prop, dict) else prop for prop in props
+            ]
         else:
             out["properties"] = props
     else:
@@ -285,7 +303,7 @@ def _translate_validation_error(
     )
 
 
-def _hint_for(err: dict[str, Any]) -> str | None:
+def _hint_for(err: ErrorDetails) -> str | None:
     """Attach a hint for common pydantic errors."""
     err_type = err.get("type", "")
     if err_type == "missing":
